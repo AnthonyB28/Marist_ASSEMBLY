@@ -1,0 +1,460 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.12.0
+Created On: 10/28/2012 7:59:05 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Program    : Craps base code
+00000000                             3  * Written by : Ron Coleman, Ph.D.
+00000000                             4  * Date       : 14-Oct-2012
+00000000                             5  * Description:
+00000000                             6  * Implements the base to initialize the pit and shoot dice
+00000000                             7  *              
+00000000                             8  *-----------------------------------------------------------
+00001000                             9          ORG     $1000
+00001000                            10  start:                  
+00001000                            11  *------- 1. SET PITNO MANUALLY OR PROGRAMMATICALLY ---------
+00001000                            12  * If manually, scroll down and put a number between 0 & n
+00001000                            13  * where n is the number of pits. In this base code, n is 6.
+00001000                            14  * If programmatically, get input from the user with task #4,
+00001000                            15  * and do the following:
+00001000                            16  *
+00001000                            17  *                       lea pitno, a1
+00001000                            18  *                       move d1, (a1)
+00001000                            19  *
+00001000                            20  * Then you've set the pit number randomly.
+00001000                            21  *-----------------------------------------------------------
+00001000                            22  
+00001000                            23  * This next statement MUST be invoked PRIOR to using invokig shoot.
+00001000                            24  *  needs to be invoked just ONCE. DO NOT INVOKE multiple times,
+00001000                            25  * although it wouldn't hurt to do so, it is unecessary to do so.
+00001000                            26  *       bsr     diceInit
+00001000                            27  
+00001000                            28  *-----------------------------------------------------------
+00001000                            29  * Uncomment is next statement ONLY to test the dice. Otherwise leave
+00001000                            30  * it commented.
+00001000                            31  ;       bsr     diceTest
+00001000                            32  *-----------------------------------------------------------
+00001000                            33  
+00001000                            34  *---------- 2. PUT YOUR CODE HERE TO PLAY CRAPS ------------
+00001000                            35  * The game upon start will print welcome, set the bank to $100 to start, ask for a pit number,
+00001000                            36  * enter a bet amount, and then the game will ask to either shoot or quit.
+00001000                            37  *
+00001000                            38  * From here, the player will either lose (crapout), win (natural), or enter the point stage.
+00001000                            39  *
+00001000                            40  * If point stage, the dice total becomes the point number and the player will continue to roll
+00001000                            41  * unless either the point number is made from dice total again (win) or the player rolls a 7 (lose).
+00001000                            42  *
+00001000                            43  * A win or loss at any time will result in the game repeating itself.
+00001000                            44  * The game will end if the bank hits $0, or the player inputs q to quit the game.
+00001000                            45  *
+00001000                            46  * Key memory registers I have used:
+00001000                            47  *       D3 = die one (after shoot, set by displayDice)
+00001000                            48  *       D4 = die two (after shoot, set by displayDice)
+00001000                            49  *       D5 = player bank
+00001000                            50  *       D6 = player bet
+00001000                            51  *       A7 = stack will have point total (set by pointstart)
+00001000                            52  *------------------------------------------------------------
+00001000                            53  
+00001000  43F9 00001AA2             54          lea     welcome,a1      ;print the Welcome to Las Vegas Message
+00001006  103C 000E                 55          move.b  #14,d0
+0000100A  4E4F                      56          trap    #15
+0000100C  BA7C 0000                 57          cmp     #0,d5           ;if d5 (bank) is 0, then first time playing
+00001010  6700 0084                 58          beq     firstplay       ;if first time playing, go set bank to $100
+00001014                            59          
+00001014                            60  *----Begin playing craps, program loops back here until bank is 0 or q is entered
+00001014                            61  craps:
+00001014  6100 005E                 62          bsr     pitset          ;ask player to set the pit number
+00001018  6100 01E0                 63          bsr     diceInit        ;initiate the dice AFTER the pit number is set
+0000101C                            64          
+0000101C  6100 007E                 65          bsr     bank            ;display bank
+00001020                            66          
+00001020  6100 0090                 67          bsr     bet             ;ask player for a bet
+00001024  6100 00B8                 68          bsr     response        ;ask player to either shoot or quit, then proceeds to shoot
+00001028                            69          
+00001028  6100 00D8                 70          bsr     displayDice     ;displays both dice to the player
+0000102C  3401                      71          move    d1,d2           ;move second dice # to d2
+0000102E  4841                      72          swap    d1              ;swap hi and lo dice memory
+00001030  D441                      73          add     d1,d2           ;add the first dice # to second dice # in d2
+00001032                            74          
+00001032                            75          
+00001032                            76          *---Win by 7 or 11
+00001032  B47C 0007                 77          cmp     #7,d2           ;if dice is 7, then win
+00001036  6700 016C                 78          beq     win
+0000103A  B47C 000B                 79          cmp     #11,d2          ;if dice is 11, also win
+0000103E  6700 0164                 80          beq     win
+00001042                            81          
+00001042                            82          *---Lose by crapout
+00001042  B47C 0002                 83          cmp     #2,d2           ;lose if crap out
+00001046  6700 00EE                 84          beq     crapout
+0000104A  B47C 0003                 85          cmp     #3,d2
+0000104E  6700 00E6                 86          beq     crapout
+00001052  B47C 000C                 87          cmp     #12,d2
+00001056  6700 00DE                 88          beq     crapout
+0000105A                            89          
+0000105A                            90          *---Point stage
+0000105A  6100 00F4                 91          bsr     pointstart      ;if not win or lose, establish point and start point phase
+0000105E                            92          
+0000105E                            93  *---Branch here to GameOver
+0000105E                            94  end:
+0000105E  6100 003C                 95          bsr     bank            ;print bank statement, should be 0
+00001062  43F9 00001C06             96          lea     gameover,a1     ;print Game Over
+00001068  103C 000E                 97          move.b  #14,d0
+0000106C  4E4F                      98          trap    #15
+0000106E  103C 0009                 99          move.b  #9,d0           ;Halt the simulator
+00001072  4E4F                     100          trap    #15
+00001074                           101          
+00001074                           102  *---Branch here to set the pit number
+00001074                           103  pitSet:
+00001074  43F9 00001AFC            104          lea     pitm,a1         ;print ask for pit number
+0000107A  103C 000E                105          move.b  #14,d0
+0000107E  4E4F                     106          trap    #15
+00001080  7200                     107          move.l  #0,d1           ;clearing d1
+00001082  103C 0004                108          move.b  #4,d0           ;ask user for number
+00001086  4E4F                     109          trap    #15
+00001088  B27C 0006                110          cmp     #6,d1           ;make sure number is NOT greater than 6
+0000108C  62E6                     111          bhi     pitset          ;if greater than 6, then repeat
+0000108E  33C1 00001268            112          move.w  d1, pitno       ;setting pit number
+00001094  4E75                     113          rts
+00001096                           114          
+00001096                           115  *---Gives player $100 bank to start with, only occurs if first execution of program
+00001096                           116  firstPlay:
+00001096  7A64                     117          move.l  #100,d5         ;Gives player a starting account of $100
+00001098  6000 FF7A                118          bra     craps
+0000109C                           119          
+0000109C                           120  *---Display the player's bank amount
+0000109C                           121  bank:
+0000109C  43F9 00001ADD            122          lea     bankm,a1        ;print bank message
+000010A2  103C 000E                123          move.b  #14,d0
+000010A6  4E4F                     124          trap    #15
+000010A8  2205                     125          move.l  d5,d1           ;moving bank from d5 to d1 to print
+000010AA  103C 0003                126          move.b  #3,d0           ;print bank number
+000010AE  4E4F                     127          trap    #15
+000010B0  4E75                     128          rts
+000010B2                           129          
+000010B2                           130  *---Branch here to ask user for a bet
+000010B2                           131  bet:
+000010B2  4241                     132          clr     d1              ;clear d1 just incase
+000010B4  43F9 00001B24            133          lea     betm,a1         ;ask player for a bet
+000010BA  103C 000E                134          move.b  #14,d0
+000010BE  4E4F                     135          trap    #15
+000010C0  103C 0004                136          move.b  #4,d0           ;number input
+000010C4  4E4F                     137          trap    #15
+000010C6  B245                     138          cmp     d5,d1           ;compare bet to bank account
+000010C8  6E00 0006                139          bgt     bethigh         ;make sure player doesnt bet too high
+000010CC  3C01                     140          move    d1,d6           ;bet located in d6 if not too high
+000010CE  4E75                     141          rts
+000010D0                           142          
+000010D0                           143  *---If bet is too high, continue to ask for bet
+000010D0                           144  betHigh:
+000010D0  43F9 00001B40            145          lea     bet2high,a1     ;inform player bet too high
+000010D6  103C 000E                146          move.b  #14,d0
+000010DA  4E4F                     147          trap    #15
+000010DC  60D4                     148          bra     bet             ;return to bet
+000010DE                           149          
+000010DE                           150  *---Branch here to ask player to either shoot the dice or quit the game
+000010DE                           151  response:
+000010DE  43F9 00001B74            152          lea     signIn,a1       ;ask player to either enter to shoot or q to quit
+000010E4  103C 000E                153          move.b  #14,d0
+000010E8  4E4F                     154          trap    #15
+000010EA  103C 0005                155          move.b  #5,d0           ;have player enter a single ASCII char
+000010EE  4E4F                     156          trap    #15
+000010F0  B27C 0071                157          cmp     #113,d1         ;if q, then quit and GameOver
+000010F4  6700 FF68                158          beq     end
+000010F8  B27C 000D                159          cmp     #13,d1          ;if enter (or CR), then shoot
+000010FC  6700 00E2                160          beq     shoot
+00001100  66DC                     161          bne     response        ;if neither, then repeat
+00001102                           162          
+00001102                           163  *---Branch here to print the outcome of shoot
+00001102                           164  displayDice:
+00001102                           165          *---Remember dice numbers are reversed, not critical but helps to know
+00001102  2F01                     166          move.l  d1,-(a7)        ;push to stack to save
+00001104  3801                     167          move    d1,d4           ;move second dice # to d2
+00001106  4841                     168          swap    d1              ;swap the hi and lo dice
+00001108  3601                     169          move    d1,d3           ;move first die # to d3
+0000110A  2204                     170          move.l  d4,d1           ;move second die # to d1 to print
+0000110C  43F9 00001B9D            171          lea     die1,a1         ;print die message
+00001112  303C 000E                172          move    #14,d0
+00001116  4E4F                     173          trap    #15
+00001118  303C 0003                174          move    #3,d0           ;print the second die
+0000111C  4E4F                     175          trap    #15
+0000111E  2203                     176          move.l  d3,d1           ;move first die # to d1 to print
+00001120  43F9 00001BA9            177          lea     die2,a1         ;print the die 2 message
+00001126  303C 000E                178          move    #14,d0
+0000112A  4E4F                     179          trap    #15
+0000112C  303C 0003                180          move    #3,d0           ;print the first die #
+00001130  4E4F                     181          trap    #15
+00001132  221F                     182          move.l  (a7)+,d1        ;pop to d1 to restore original dice numbers
+00001134  4E75                     183          rts
+00001136                           184          
+00001136                           185  *---If crapout occurs, branch here
+00001136                           186  crapout:
+00001136  43F9 00001BAF            187          lea     crapoutm,a1     ;print crapout message
+0000113C  303C 000E                188          move    #14,d0
+00001140  4E4F                     189          trap    #15
+00001142  2204                     190          move.l  d4,d1           ;moving the first die to d1
+00001144  D243                     191          add     d3,d1           ;adding the second die to the first die, into d1
+00001146  303C 0003                192          move    #3,d0
+0000114A  4E4F                     193          trap    #15             ;print the dice total number
+0000114C  6000 0070                194          bra     lose            ;always continue to lose
+00001150                           195          
+00001150                           196  *---Branch here to start the point stage, sets the point and continues to point stage
+00001150                           197  pointStart:
+00001150  43F9 00001BC7            198          lea     pointm,a1       ;print the point message
+00001156  303C 000E                199          move    #14,d0
+0000115A  4E4F                     200          trap    #15
+0000115C  2204                     201          move.l  d4,d1           ;moving the second dice # to d1 to print
+0000115E  D243                     202          add     d3,d1           ;adding d3 to d1 to make point
+00001160  3F01                     203          move    d1,-(a7)        ;pushing point to stack so I dont lose it
+00001162  303C 0003                204          move    #3,d0           ;printing point total
+00001166  4E4F                     205          trap    #15
+00001168  6000 0002                206          bra point               ;always continue to point stage
+0000116C                           207          
+0000116C                           208  *---This is the point stage, will loop over until either 7 or point is achieved
+0000116C                           209  point:
+0000116C  6100 FF70                210          bsr     response        ;shoot or quit
+00001170  6190                     211          bsr     displayDice     ;display new dice roll if shoot
+00001172  3401                     212          move    d1,d2           ;move new second die # to d2
+00001174  4841                     213          swap    d1              ;swap hi and lo new dice memory
+00001176  D441                     214          add     d1,d2           ;add the first new die # to second new die # in d2
+00001178  2217                     215          move.l  (a7),d1         ;replace old die point count
+0000117A  4841                     216          swap    d1
+0000117C  B441                     217          cmp     d1,d2           ;if point equals the new total dice, then win
+0000117E  6700 000A                218          beq     pointwin
+00001182  B47C 0007                219          cmp     #7,d2           ;if new point is 7, then lose
+00001186  67AE                     220          beq     crapout
+00001188  60E2                     221          bra     point           ;otherwise, do it again!
+0000118A                           222          
+0000118A                           223  *---If point is achieved, branch here to win
+0000118A                           224  pointWin:
+0000118A  43F9 00001BD7            225          lea     pointwinm,a1    ;print point win message
+00001190  303C 000E                226          move    #14,d0
+00001194  4E4F                     227          trap    #15
+00001196  2217                     228          move.l  (a7),d1         ;move the point total off the stack, ie:6000000 is point total of 6
+00001198  4841                     229          swap    d1              ;swapping around so it makes sense, ie:000006 is the real point total of 6
+0000119A  303C 0003                230          move    #3,d0           ;print the point total
+0000119E  4E4F                     231          trap    #15
+000011A0  6000 0002                232          bra     win             ;always continue to win
+000011A4                           233          
+000011A4                           234  *---If any winning condition achieved, branch here
+000011A4                           235  win:
+000011A4  43F9 00001BED            236          lea     winm,a1         ;print win message
+000011AA  103C 000E                237          move.B  #14,d0
+000011AE  4E4F                     238          trap    #15
+000011B0  DA46                     239          add     d6,d5           ;reward player with bet amount
+000011B2  2206                     240          move.l  d6,d1           ;move bet amount to d1 so that it prints
+000011B4  303C 0003                241          move    #3,d0
+000011B8  4E4F                     242          trap    #15             ;print bet amount: you won x amount
+000011BA  6000 FE58                243          bra     craps           ;always continue the game, it will loop until bank is 0 or q is entered
+000011BE                           244          
+000011BE                           245  *---If any losing condition achieved, branch here. Game Over if bank is $0!!!
+000011BE                           246  lose:
+000011BE  43F9 00001BF9            247          lea     losem,a1        ;print lose message
+000011C4  103C 000E                248          move.b  #14,d0
+000011C8  4E4F                     249          trap    #15
+000011CA  9A46                     250          sub     d6,d5           ;remove bet from player bank
+000011CC  2206                     251          move.l  d6,d1           ;move bet amount to d1 so that it prints
+000011CE  303C 0003                252          move    #3,d0
+000011D2  4E4F                     253          trap    #15             ;print bet amount: you lose x amount
+000011D4  BA7C 0000                254          cmp     #0,d5           ;make sure bank is not 0, if no, then Game Over!
+000011D8  6700 FE84                255          beq     end
+000011DC  6000 FE36                256          bra     craps           ;always continue the game, it will loop until bank is 0 or q is entered
+000011E0                           257  
+000011E0                           258  * Returns dice in upper and lower words of d1.
+000011E0                           259  * NOTE: Returns d1 = 0, when there are not more throws in the sequece
+000011E0                           260  shoot:
+000011E0  48E7 2060                261          movem.l d2/a1-a2,-(a7)
+000011E4  43F9 0000126A            262          lea     pitptr, a1
+000011EA  2451                     263          move.l  (a1), a2
+000011EC  321A                     264          move.w  (a2)+, d1
+000011EE  4841                     265          swap    d1
+000011F0  321A                     266          move.w  (a2)+, d1
+000011F2  228A                     267          move.l  a2, (a1)
+000011F4  4CDF 0604                268          movem.l (a7)+,d2/a1-a2
+000011F8  4E75                     269          rts
+000011FA                           270          
+000011FA                           271  * Initializes the dice based on the pit number
+000011FA                           272  diceInit:
+000011FA  48E7 8060                273          movem.l d0/a1-a2, -(a7) ;Save the registers we'll use
+000011FE  43F9 00001268            274          lea     pitno, a1       ;Get the pit number into d0
+00001204  3011                     275          move    (a1), d0        
+00001206                           276          
+00001206  B07C 0000                277          cmp     #0, d0          ;If pitno zero, intialize random dice
+0000120A  6700 0020                278          beq     rand_
+0000120E                           279          
+0000120E  5340                     280          sub     #1, d0          ;Else use d0 as offset into pit table
+00001210                           281          
+00001210  43F9 0000126E            282          lea     pittab, a1
+00001216  C0FC 0004                283          mulu    #4, d0          ;Convert pit number into to 32-bit offset
+0000121A  D2C0                     284          add     d0, a1          ;Compute <ea> of pit table
+0000121C  2251                     285          move.l  (a1), a1        ;get actual pit address into a1
+0000121E                           286          
+0000121E  45F9 0000126A            287          lea     pitptr, a2      ;Store pit address into pit pointer variable
+00001224  2489                     288          move.l  a1, (a2)
+00001226                           289  done:
+00001226  4CDF 0601                290          movem.l (a7)+, d0/a1-a2
+0000122A  4E75                     291          rts
+0000122C                           292  
+0000122C                           293  * Uses TOD as index into random sequence
+0000122C                           294  rand_:
+0000122C  103C 0008                295          move.b  #8,d0           ;Get into d1 time in 100s seconds since midnight
+00001230  4E4F                     296          trap    #15
+00001232  C2BC 005FFFFF            297          and.l   #$5FFFFF,d1
+00001238  82FC 0064                298          divu    #100, d1
+0000123C  4841                     299          swap    d1
+0000123E  C2BC 0000FFFF            300          and.l   #$FFFF, d1      ;Clear the upper words of d1
+00001244  C2FC 0002                301          mulu    #2, d1          ;Convert d1 to word-offset      
+00001248  43F9 000012CE            302          lea     pit00, a1       ;Compute <ea> into pit00
+0000124E  D2C1                     303          add     d1, a1  
+00001250  45F9 0000126A            304          lea     pitptr, a2      ;Store <ea> into pit pointer variable
+00001256  2489                     305          move.l  a1, (a2)
+00001258  60CC                     306          bra     done            
+0000125A                           307  
+0000125A                           308  diceTest:       
+0000125A  3A3C 0064                309          move    #100, d5
+0000125E                           310  loop_:
+0000125E  6180                     311          bsr     shoot
+00001260  5345                     312          sub     #1, d5
+00001262  57CD FFFA                313          dbeq    d5, loop_
+00001266  4E75                     314          rts
+00001268                           315          
+00001268                           316  * Pit number: modify this to 0 - 6
+00001268                           317  * 0: random throws
+00001268                           318  * >0: test cases with known behaviors (see below)
+00001268= 0000                     319  pitno   dc.w    0
+0000126A                           320  
+0000126A                           321  * Pit pointer variable DO NOT MODIFY
+0000126A= 00000000                 322  pitptr  dc.l    0
+0000126E                           323          
+0000126E                           324  * Pit table DO NOT MODIFY unless additing more pits
+0000126E= 00001286 0000128E ...    325  pittab  dc.l    pit01, pit02, pit03, pit04, pit05, pit06
+00001286                           326  
+00001286                           327  * s on first throw (7) DO NOT MODIFY
+00001286= 0003 0004                328  pit01   dc.w    3, 4
+0000128A= 0000 0000                329          dc.w    0, 0
+0000128E                           330  
+0000128E                           331  * Wins on first throw (11) DO NOT MODIFY
+0000128E= 0006 0005                332  pit02   dc.w    6, 5
+00001292= 0000 0000                333          dc.w    0, 0
+00001296                           334  
+00001296                           335  * Craps out on 1st throw (2) DO NOT MODIFY
+00001296= 0001 0001                336  pit03   dc.w    1, 1    ;snake eyes!
+0000129A= 0000 0000                337          dc.w    0, 0
+0000129E                           338  
+0000129E                           339  * Craps out on 1st throw (12) DO NOT MODIFY
+0000129E= 0006 0006                340  pit04   dc.w    6, 6
+000012A2= 0000 0000                341          dc.w    0, 0
+000012A6                           342          
+000012A6                           343  * Establishes point 9 and craps out on 3rd throw (7) DO NOT MODIFY
+000012A6= 0004 0005                344  pit05   dc.w    4, 5    ;establishes point of 9
+000012AA= 0002 0004                345          dc.w    2, 4
+000012AE= 0003 0004                346          dc.w    3, 4    ;crap-out here with 7
+000012B2= 0000 0000                347          dc.w    0, 0
+000012B6                           348  
+000012B6                           349  ; Establishes point 5 and wins on 5th throw DO NOT MODIFY
+000012B6= 0002 0003                350  pit06   dc.w    2, 3
+000012BA= 0005 0004                351          dc.w    5, 4
+000012BE= 0005 0005                352          dc.w    5, 5
+000012C2= 0006 0005                353          dc.w    6, 5
+000012C6= 0001 0004                354          dc.w    1, 4
+000012CA= 0000 0000                355          dc.w    0, 0
+000012CE                           356  
+000012CE                           357  * Random throws table DO NOT MODIFY
+000012CE= 0006 0002 0006 0...      358  pit00   dc.w    6,2,6,1,3,1,4,2,6,4,3,2,3,1,6,5,4,4,1,5,3,5,6,6,4,3,5,5,1,1,5,2,5,5,4,5,4,6,1,6,5,4,3,3,2,5,2,2,1,1
+00001332= 0003 0006 0001 0...      359          dc.w    3,6,1,3,2,1,3,5,6,5,2,3,4,2,3,3,1,5,5,4,3,6,2,3,1,6,1,4,4,6,1,3,6,1,4,2,4,2,2,2,3,3,5,6,2,4,2,2,5,6
+00001396= 0004 0005 0003 0...      360          dc.w    4,5,3,3,2,2,6,4,2,2,6,4,6,3,2,1,6,2,3,3,4,3,4,4,5,4,4,1,6,3,3,1,3,2,1,2,1,4,6,3,6,4,2,5,2,5,1,1,4,5
+000013FA= 0004 0003 0006 0...      361          dc.w    4,3,6,4,4,6,4,6,4,1,6,3,3,5,6,3,2,1,6,5,5,5,3,2,6,4,5,5,3,3,6,5,1,3,3,2,3,5,6,2,4,4,2,1,4,3,6,5,3,4
+0000145E= 0004 0003 0003 0...      362          dc.w    4,3,3,2,5,1,5,5,2,4,6,5,4,4,1,3,3,4,1,4,1,6,6,1,4,5,2,4,5,6,1,2,2,3,2,1,4,1,3,2,1,5,1,1,6,6,1,5,3,3
+000014C2= 0001 0006 0006 0...      363          dc.w    1,6,6,4,2,1,3,3,2,5,3,1,1,6,2,1,2,3,3,4,5,2,4,1,2,6,2,5,4,4,2,4,3,5,1,6,3,6,2,2,3,4,3,2,5,4,4,4,2,4
+00001526= 0005 0006 0004 0...      364          dc.w    5,6,4,2,6,6,5,5,1,1,5,3,2,6,4,1,2,2,3,1,1,1,5,4,3,2,2,3,2,6,2,1,5,3,3,3,6,3,2,6,6,6,3,6,2,6,1,6,2,6
+0000158A= 0003 0001 0005 0...      365          dc.w    3,1,5,1,2,2,6,5,3,6,5,6,6,4,1,3,5,1,1,1,3,5,6,6,3,3,4,1,5,3,1,2,2,6,1,3,5,1,2,1,5,5,1,6,1,5,6,6,2,2
+000015EE= 0001 0001 0006 0...      366          dc.w    1,1,6,6,5,4,3,5,1,4,3,5,5,6,3,1,4,5,4,2,3,2,1,2,2,5,2,1,1,2,3,5,5,1,6,2,3,6,2,5,6,6,1,4,6,4,5,2,3,1
+00001652= 0003 0004 0002 0...      367          dc.w    3,4,2,1,2,4,5,1,3,6,4,3,5,6,4,6,5,4,4,5,3,6,5,4,2,6,1,6,2,1,6,6,2,6,4,2,2,6,3,4,1,3,3,2,2,4,2,2,5,6
+000016B6= 0001 0003 0002 0...      368          dc.w    1,3,2,4,6,4,2,2,2,6,5,4,4,3,3,1,2,2,6,6,1,1,4,2,4,4,5,6,4,6,5,3,5,5,2,3,1,5,5,5,1,4,3,3,1,5,2,6,5,5
+0000171A= 0005 0001 0001 0...      369          dc.w    5,1,1,1,6,1,1,5,4,2,5,1,4,5,3,1,3,4,2,1,3,3,5,1,2,2,6,6,1,3,2,4,1,6,6,3,2,1,3,4,2,5,6,4,6,6,3,2,2,2
+0000177E= 0001 0003 0003 0...      370          dc.w    1,3,3,6,2,1,1,2,6,1,5,3,6,1,2,1,5,6,4,3,3,3,5,5,3,2,4,5,3,1,1,1,2,5,1,2,5,1,2,4,1,5,4,4,5,2,5,6,4,6
+000017E2= 0005 0005 0003 0...      371          dc.w    5,5,3,3,1,3,6,1,4,4,1,6,2,1,3,4,2,6,6,6,2,4,2,3,6,6,1,5,2,6,2,3,2,1,1,4,1,2,2,3,5,2,6,3,6,6,2,5,5,1
+00001846= 0003 0004 0005 0...      372          dc.w    3,4,5,4,4,1,2,2,1,4,2,2,2,4,1,2,1,5,3,6,5,1,1,5,4,2,5,2,6,1,5,3,2,4,6,4,2,3,3,4,1,3,4,2,5,4,4,4,1,6
+000018AA= 0006 0003 0003 0...      373          dc.w    6,3,3,1,5,3,5,3,1,1,3,5,1,2,5,5,6,6,6,2,3,1,6,4,2,3,3,6,6,4,2,1,4,4,4,1,2,5,4,2,5,6,3,6,5,1,5,5,1,6
+0000190E= 0001 0006 0005 0...      374          dc.w    1,6,5,2,4,1,1,5,3,2,1,2,6,6,5,6,4,6,2,6,3,5,6,6,5,1,2,5,3,4,2,1,2,1,1,5,1,2,4,2,5,5,5,4,1,3,3,3,3,4
+00001972= 0003 0002 0004 0...      375          dc.w    3,2,4,5,6,4,4,5,2,4,3,4,2,4,3,1,6,4,4,2,4,2,6,3,2,1,6,4,3,4,1,4,3,1,6,1,5,5,6,5,3,6,1,1,2,3,5,4,2,5
+000019D6= 0001 0002 0002 0...      376          dc.w    1,2,2,1,5,1,4,3,6,5,1,3,3,1,2,6,3,5,4,4,4,4,5,5,1,3,5,4,3,1,2,3,4,2,1,1,4,3,1,1,6,2,4,3,2,2,3,3,5,2
+00001A3A= 0005 0004 0001 0...      377          dc.w    5,4,1,1,3,2,3,6,1,1,3,2,1,4,5,3,2,5,1,6,6,2,6,1,3,1,1,1,2,2,1,2,6,5,2,1,3,2,6,1,5,6,2,5,1,1,2,1,3,2
+00001A9E= 0000 0000                378          dc.w    0,0
+00001AA2                           379          
+00001AA2                           380          
+00001AA2  =0000000D                381  CR      EQU     $0D     ASCII Code for Carriage Return
+00001AA2  =0000000A                382  LF      EQU     $0A     ASCII code for Line Feed
+00001AA2= 57 65 6C 63 6F 6D ...    383  welcome DC.B    'Welcome to the world famous Paris Las Vegas on The Strip',CR,LF,0
+00001ADD= 0D 0A 59 6F 75 72 ...    384  bankm   DC.B    CR,LF,'Your bankroll is currently $',0  ;needs CR,LF before next print
+00001AFC= 0D 0A 0D 0A 50 6C ...    385  pitm    DC.B    CR,LF,CR,LF,'Please enter a pit number 0 to 6:',CR,LF,0
+00001B24= 0D 0A 50 6C 65 61 ...    386  betm    DC.B    CR,LF,'Please enter bet amount: ',0
+00001B40= 59 6F 75 72 20 62 ...    387  bet2high DC.B   'Your bet was too high! Not enough funds.',0
+00001B69= 59 6F 75 20 62 65 ...    388  bet0    DC.B    'You bet 0!',0
+00001B74= 0D 0A 50 72 65 73 ...    389  signIn  DC.B    CR,LF,'Press <enter> to shoot or q to quit.',CR,LF,0
+00001B9D= 59 6F 75 20 74 68 ...    390  die1    DC.B    'You threw: ',0 
+00001BA9= 20 61 6E 64 20 00        391  die2    DC.B    ' and ',0       ;needs CR,LF before next print
+00001BAF= 0D 0A 59 6F 75 20 ...    392  crapoutm DC.B   CR,LF,'You crapped out with ',0
+00001BC7= 0D 0A 54 68 65 20 ...    393  pointm  DC.B    CR,LF,'The point is ',0
+00001BD7= 0D 0A 59 6F 75 20 ...    394  pointwinm DC.B  CR,LF,'You made the point ',0
+00001BED= 0D 0A 59 6F 75 20 ...    395  winm    DC.B    CR,LF,'You won $',0
+00001BF9= 0D 0A 59 6F 75 20 ...    396  losem   DC.B    CR,LF,'You lost $',0
+00001C06= 0D 0A 47 61 6D 65 ...    397  gameover DC.B   CR,LF,'Game Over.',0
+00001C13                           398  
+00001C13                           399          end     start           ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BANK                109C
+BANKM               1ADD
+BET                 10B2
+BET0                1B69
+BET2HIGH            1B40
+BETHIGH             10D0
+BETM                1B24
+CR                  D
+CRAPOUT             1136
+CRAPOUTM            1BAF
+CRAPS               1014
+DICEINIT            11FA
+DICETEST            125A
+DIE1                1B9D
+DIE2                1BA9
+DISPLAYDICE         1102
+DONE                1226
+END                 105E
+FIRSTPLAY           1096
+GAMEOVER            1C06
+LF                  A
+LOOP_               125E
+LOSE                11BE
+LOSEM               1BF9
+PIT00               12CE
+PIT01               1286
+PIT02               128E
+PIT03               1296
+PIT04               129E
+PIT05               12A6
+PIT06               12B6
+PITM                1AFC
+PITNO               1268
+PITPTR              126A
+PITSET              1074
+PITTAB              126E
+POINT               116C
+POINTM              1BC7
+POINTSTART          1150
+POINTWIN            118A
+POINTWINM           1BD7
+RAND_               122C
+RESPONSE            10DE
+SHOOT               11E0
+SIGNIN              1B74
+START               1000
+WELCOME             1AA2
+WIN                 11A4
+WINM                1BED

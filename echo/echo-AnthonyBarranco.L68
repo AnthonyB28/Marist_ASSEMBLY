@@ -1,0 +1,60 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.12.0
+Created On: 10/8/2012 7:12:00 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Program    : ECHO     
+00000000                             3  * Written by : Anthony Barranco
+00000000                             4  * Date       : 9/24/12
+00000000                             5  * Description: Takes user input, outputs it, and length
+00000000                             6  *-----------------------------------------------------------
+00000000                             7          
+00001000                             8  START:  ORG     $1000                   ; first instruction of program
+00001000                             9  
+00001000                            10          *-----Ask for the number input-----
+00001000  43F9 00001036             11          LEA MESSAGE,A1          ;Loads MESSAGE into
+00001006  103C 000E                 12          Move.B  #14,D0          ;Moves the number 14 into data register D0
+0000100A  4E4F                      13          TRAP    #15
+0000100C                            14          
+0000100C                            15          *------INPUT-----
+0000100C  43F9 00001066             16          LEA     BUFFER, A1 ;Take input into BUFFER in A1
+00001012  103C 0002                 17          Move.B  #2,D0      ;inputs string into A1, length in D1.W
+00001016  4E4F                      18          TRAP    #15     
+00001018                            19          
+00001018                            20          *-----OUTPUT BUFFER-----
+00001018  103C 000E                 21          MOVE.B  #14, D0   ;Reads string frm A1
+0000101C  4E4F                      22          TRAP    #15
+0000101E                            23          
+0000101E                            24          *-----OUTPUT LENGTH---
+0000101E  43F9 00001047             25          LEA     TOTAL, A1 ;Display TOTAL for information
+00001024  4E4F                      26          TRAP    #15
+00001026  143C 000A                 27          Move.B #10, D2  ;Setting the base
+0000102A  103C 000F                 28          Move.B #15, D0  ;Output number from D1.L
+0000102E  4E4F                      29          TRAP #15
+00001030                            30          
+00001030                            31          *----TERMINATE---
+00001030  103C 0009                 32          MOVE.B  #9,D0
+00001034  4E4F                      33          TRAP    #15
+00001036                            34  
+00001036                            35  * Variables and Strings
+00001036  =0000000D                 36  CR      EQU     $0D     ASCII Code for Carriage Return
+00001036  =0000000A                 37  LF      EQU     $0A     ASCII code for Line Feed
+00001036= 45 6E 74 65 72 20 ...     38  MESSAGE DC.B    'Enter a string: ',0  Please ASCII string in memory at MESSAGE
+00001047= 0D 0A 54 6F 74 61 ...     39  TOTAL   DC.B    CR,LF,'Total number of characters: ',0
+00001066                            40  BUFFER  DS.B    80
+000010B6                            41  
+000010B6                            42          END     START           ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BUFFER              1066
+CR                  D
+LF                  A
+MESSAGE             1036
+START               1000
+TOTAL               1047

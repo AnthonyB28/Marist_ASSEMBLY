@@ -1,0 +1,522 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.12.0
+Created On: 12/3/2012 6:42:50 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Program Number: 2.0
+00000000                             3  * Written by    : Anthony Barranco
+00000000                             4  * Date Created  : 12/2/12
+00000000                             5  * Description   : Pellet Eater (Snake) WITH SOUNDS
+00000000                             6  *
+00000000                             7  *-----------------------------------------------------------
+00000000                             8  
+00000000                             9  
+00000000                            10  *-----------------------------------------------------------
+00000000                            11  * Two methods of playing sound:
+00000000                            12  * Standard player uses task 71 to load, task 72 to play, and task 76 to control.
+00000000                            13  * DirectX player uses task 74 to load , task 75 to play, and task 77 to control.
+00000000                            14  * DirectX player was added to Easy68k in 2009 v4.7.0
+00000000                            15  *
+00000000                            16  * Differece is that the DirectX player allows !MULTIPLE! sound files to be played at !ONCE!
+00000000                            17  * Whereas the standard player does not and needs additional code, which can break things easily
+00000000                            18  *
+00000000                            19  * In this program I have added 6 sounds.
+00000000                            20  * A movement, direction change, pellet eat, lose wall, lose self, and the optional theme sounds.
+00000000                            21  * All sounds except the two lose sounds use the DX player to ensure seperate control states.
+00000000                            22  *-----------------------------------------------------------
+00000000                            23  
+00000000                            24  
+00000000                            25  
+00001000                            26  START   ORG     $1000
+00001000                            27  
+00001000  223C 0000FF00             28          move.l  #$0000FF00,d1   Make the pen green
+00001006  103C 0050                 29          move.b  #80,d0
+0000100A  4E4F                      30          trap    #15
+0000100C  720A                      31          move.l  #10,d1  Set pen width to 10
+0000100E  103C 005D                 32          move.b  #93,d0
+00001012  4E4F                      33          trap    #15
+00001014                            34  
+00001014                            35  *Loading Sound into memory
+00001014  43F9 0000150A             36          lea      move,a1        load the "move" wav for character
+0000101A  323C 0000                 37          move    #0,d1           sound will be #0
+0000101E  303C 004A                 38          move    #74,d0          trap number 74 to load the wav file in DX
+00001022  4E4F                      39          trap    #15
+00001024  43F9 00001513             40          lea     change,a1       load the "change" wav for changing direction
+0000102A  323C 0001                 41          move    #1,d1           sound will be #1
+0000102E  303C 004A                 42          move    #74,d0          trap number 74 to load the wav file in DX
+00001032  4E4F                      43          trap    #15
+00001034  43F9 0000151E             44          lea     eat,a1          load the "eat" wav for eating pellets
+0000103A  323C 0002                 45          move    #2,d1           sound will be #2
+0000103E  303C 004A                 46          move    #74,d0          trap number 74 to load the wav file in DX
+00001042  4E4F                      47          trap    #15
+00001044  43F9 00001526             48          lea     loseyou,a1      load the "loseyou" wav for when you collide w/ yourself
+0000104A  323C 0003                 49          move    #3,d1           sound will be #3
+0000104E  303C 0047                 50          move    #71,d0          trap number 71 to load the wav file in Regular Player
+00001052  4E4F                      51          trap    #15
+00001054  43F9 00001532             52          lea     losew,a1        load the "losew" wav for when you collide w/ wall
+0000105A  323C 0004                 53          move    #4,d1           sound will be #4
+0000105E  303C 0047                 54          move    #71,d0          trap number 71 to load the wav file
+00001062  4E4F                      55          trap    #15
+00001064  43F9 0000153C             56          lea     theme,a1        load the "theme" wav for bg music
+0000106A  323C 0005                 57          move    #5,d1           sound will be #5
+0000106E  303C 004A                 58          move    #74,d0          trap number 74 to load the wav file in DX
+00001072  4E4F                      59          trap    #15
+00001074                            60          
+00001074                            61  *Start the theme and loop it
+00001074  323C 0005                 62          move    #5,d1           use theme music
+00001078  6100 03FC                 63          bsr     play_soundDX    use DirectX player to play music
+0000107C  343C 0001                 64          move    #1,d2           make music loop
+00001080  303C 004D                 65          move    #77,d0          trap number to control the DirectX player
+00001084  4E4F                      66          trap    #15
+00001086                            67  
+00001086                            68  *Draw green border around the edge of the screen
+00001086  323C 0000                 69          move.w  #0,d1   Draw a line from 0,0 to 0,480 (top to bottom of screen)
+0000108A  343C 0000                 70          move.w  #0,d2
+0000108E  363C 0000                 71          move.w  #0,d3
+00001092  383C 01E0                 72          move.w  #480,d4
+00001096  103C 0054                 73          move.b  #84,d0
+0000109A  4E4F                      74          trap    #15
+0000109C  323C 0280                 75          move.w  #640,d1 Draw a line from wherever the pen is to 640,480 (bottom right)
+000010A0  343C 01E0                 76          move.w  #480,d2
+000010A4  103C 0055                 77          move.b  #85,d0
+000010A8  4E4F                      78          trap    #15
+000010AA  323C 0280                 79          move.w  #640,d1 Draw a line to 640,0 (top right)
+000010AE  343C 0000                 80          move.w  #0,d2
+000010B2  103C 0055                 81          move.b  #85,d0
+000010B6  4E4F                      82          trap    #15
+000010B8  323C 0000                 83          move.w  #0,d1   Draw a line back to 0,0 (top left)
+000010BC  343C 0000                 84          move.w  #0,d2
+000010C0  103C 0055                 85          move.b  #85,d0
+000010C4  4E4F                      86          trap    #15
+000010C6                            87  
+000010C6                            88  *Make the blue background
+000010C6  223C 00FF0000             89          move.l  #$00FF0000,d1   Make the fill color blue
+000010CC  103C 0051                 90          move.b  #81,d0
+000010D0  4E4F                      91          trap    #15
+000010D2  720F                      92          move.l  #15,d1  Move to a point inside the border
+000010D4  343C 000F                 93          move.w  #15,d2
+000010D8  103C 0059                 94          move.b  #89,d0  Fill in with fill color
+000010DC  4E4F                      95          trap    #15
+000010DE                            96  
+000010DE                            97  *Set the pen color to red and the fill color to yellow (for the snake) and put the pen back to 1 pixel
+000010DE  223C 000000FF             98          move.l  #$000000FF,d1
+000010E4  103C 0050                 99          move.b  #80,d0
+000010E8  4E4F                     100          trap    #15
+000010EA  223C 0000FFFF            101          move.l  #$0000FFFF,d1
+000010F0  103C 0051                102          move.b  #81,d0
+000010F4  4E4F                     103          trap    #15
+000010F6  323C 0001                104          move.w  #1,d1
+000010FA  103C 005D                105          move.b  #93,d0
+000010FE  4E4F                     106          trap    #15
+00001100                           107  
+00001100                           108  *Loop to fill the snake memory with offscreen co-ordinates
+00001100  4200                     109          clr.b   d0
+00001102  103C 0028                110          move.b  #40,d0
+00001106  41F9 00001486            111          lea     midSquares,a0
+0000110C                           112  fill
+0000110C  30FC 02BC                113          move.w  #700,(a0)+
+00001110  5300                     114          sub.b   #1,d0
+00001112  66F8                     115          bne     fill
+00001114  13FC 0004 000014DA       116          move.b  #4,size Set the snake size (to 2)
+0000111C                           117  
+0000111C                           118  *Put the first square of the snake into memory
+0000111C  41F9 0000147E            119          lea     curSquare,a0
+00001122  30FC 0005                120          move.w  #5,(a0)+
+00001126  30BC 0005                121          move.w  #5,(a0)
+0000112A  41F9 0000147E            122          lea     curSquare,a0    Reload the starting point into memory
+00001130  6100 02B4                123          bsr     draw_square     Subroutine to draw a square at given co-ordinates
+00001134                           124  
+00001134                           125  *Load the starting point into the beginning of the middle squares
+00001134  41F9 00001486            126          lea     midSquares,a0
+0000113A  30FC 0005                127          move.w  #5,(a0)+
+0000113E  30BC 0005                128          move.w  #5,(a0)
+00001142                           129  
+00001142                           130  *Find the first pellet
+00001142  6100 02C2                131          bsr     find_pellet
+00001146                           132  
+00001146                           133  *Set the snake moving
+00001146  3C3C 0000                134          move.w  #0,d6
+0000114A  3E3C 000A                135          move.w  #10,d7
+0000114E                           136  
+0000114E                           137  
+0000114E                           138  *Set the number of game loops that have passed
+0000114E  33FC 0000 000014DC       139          move.w  #0,numLoops
+00001156                           140  
+00001156                           141  *Set the beginning game speed
+00001156  23FC 0000000F 000014DE   142          move.l  #15,speed
+00001160                           143  
+00001160                           144  *Turn keyboard echo off
+00001160  123C 0000                145          move.b  #0,d1
+00001164  103C 000C                146          move.b  #12,d0
+00001168  4E4F                     147          trap    #15
+0000116A                           148  *Get the time and store it in d5, this is used to slow the game down some
+0000116A  103C 0008                149          move.b  #8,d0
+0000116E  4E4F                     150          trap    #15
+00001170  2A01                     151          move.l  d1,d5
+00001172                           152  
+00001172                           153  *Main game loop
+00001172                           154  LOOP
+00001172  103C 0008                155          move.b  #8,d0   Re-get the time
+00001176  4E4F                     156          trap    #15
+00001178  9285                     157          sub.l   d5,d1   Subtract the old time from this new time
+0000117A  B2B9 000014DE            158          cmp.l   speed,d1        If less than <speed> hundredths of a second has passed
+00001180  65F0                     159          blo     LOOP    Loop again until it has
+00001182  103C 0008                160          move.b  #8,d0   Now that enough time has passed
+00001186  4E4F                     161          trap    #15
+00001188  2A01                     162          move.l  d1,d5   Put the current time in memory for the next loop
+0000118A                           163  
+0000118A  0C79 038E 000014DC       164          cmp.w   #910,numLoops   If the game isn't speeding up anymore
+00001192  6200 002C                165          bhi     skip    skip the following code
+00001196  5279 000014DC            166          add.w   #1,numLoops     Increment the number of game loops passed since the last speed change
+0000119C  2839 000014DE            167          move.l  speed,d4
+000011A2  C8F9 000014DC            168          mulu    numLoops,d4     Find out how much time has passed since the last speed change
+000011A8  B8BC 00000384            169          cmp.l   #900,d4 If about 900 hundredths of a second hasn't passed
+000011AE  6500 0010                170          blo     skip    skip the speed increase code
+000011B2  53B9 000014DE            171          sub.l   #1,speed        Increase the speed
+000011B8  33FC 0000 000014DC       172          move.w  #0,numLoops     Reset the number of loops
+000011C0                           173  
+000011C0                           174  skip
+000011C0                           175  *Copy the last position into memory so that it can be erased later
+000011C0  41F9 00001482            176          lea     oldSquare,a0
+000011C6  43F9 00001486            177          lea     midSquares,a1
+000011CC  4284                     178          clr.l   d4
+000011CE  1839 000014DA            179          move.b  size,d4
+000011D4  5904                     180          sub.b   #4,d4
+000011D6  D3C4                     181          adda.l  d4,a1
+000011D8  30D9                     182          move.w  (a1)+,(a0)+
+000011DA  3091                     183          move.w  (a1),(a0)
+000011DC                           184  
+000011DC                           185  *Load the middle squares into memory
+000011DC  41F9 00001486            186          lea     midSquares,a0
+000011E2  43F9 00001486            187          lea     midSquares,a1
+000011E8  D1FC 00000050            188          adda.l  #80,a0
+000011EE  D3FC 0000004C            189          adda.l  #76,a1
+000011F4  4284                     190          clr.l   d4
+000011F6  183C 0026                191          move.b  #38,d4
+000011FA                           192  
+000011FA                           193  *Move the squares back one
+000011FA                           194  copy
+000011FA  3121                     195          move.w  -(a1),-(a0)
+000011FC  5304                     196          sub.b   #1,d4
+000011FE  66FA                     197          bne     copy
+00001200                           198  
+00001200                           199  *Load the current front of the snake into the memory for the middle squares, because the front will change soon
+00001200  41F9 00001486            200          lea     midSquares,a0
+00001206  43F9 0000147E            201          lea     curSquare,a1
+0000120C  30D9                     202          move.w  (a1)+,(a0)+
+0000120E  3091                     203          move.w  (a1),(a0)
+00001210                           204  
+00001210                           205  *Check to see if a key has been pressed
+00001210  4281                     206          clr.l   d1
+00001212  103C 0007                207          move.b  #7,d0
+00001216  4E4F                     208          trap    #15
+00001218  4A81                     209          tst.l   d1
+0000121A  6700 0028                210          beq     continue        If a key wasn't pressed, continue moving the snake
+0000121E                           211  
+0000121E                           212  *Read the key that was pressed and find out which key it was
+0000121E  103C 0005                213          move.b  #5,d0
+00001222  4E4F                     214          trap    #15
+00001224  B23C 0035                215          cmp.b   #$35,d1 Key pressed: 5 (down)
+00001228  6700 016C                216          beq     move_down
+0000122C  B23C 0038                217          cmp.b   #$38,d1 Key pressed: 8 (up)
+00001230  6700 0178                218          beq     move_up
+00001234  B23C 0034                219          cmp.b   #$34,d1 Key pressed: 4 (left)
+00001238  6700 0184                220          beq     move_left
+0000123C  B23C 0036                221          cmp.b   #$36,d1 Key pressed: 6 (right)
+00001240  6700 0190                222          beq     move_right
+00001244                           223          
+00001244                           224  *The part of the main loop that moves the snake
+00001244                           225  continue
+00001244  41F9 0000147E            226          lea     curSquare,a0    Load the current position
+0000124A  DD58                     227          add.w   d6,(a0)+        Modify the current position by whats in the movement memory
+0000124C  DF50                     228          add.w   d7,(a0) this will give the co-ordinates of the new square
+0000124E  323C 0000                229          move    #0,d1   load movement sound file
+00001252  6100 0222                230          bsr     play_soundDX    play sound using DirectX player
+00001256                           231          
+00001256                           232  
+00001256                           233  *curSquare and curSquare+2 should never be < 5
+00001256                           234  *curSquare+4 should never be > 635
+00001256                           235  *curSquare+6 should never be > 475
+00001256                           236  *If they are, then a wall was hit
+00001256  41F9 0000147E            237          lea     curSquare,a0    Reload the starting address of the current position
+0000125C  0C50 0005                238          cmp.w   #5,(a0)
+00001260  6D00 00C4                239          blt     WALL
+00001264  0C58 0271                240          cmp.w   #625,(a0)+
+00001268  6200 00BC                241          bhi     WALL
+0000126C  0C50 0005                242          cmp.w   #5,(a0)
+00001270  6D00 00B4                243          blt     WALL
+00001274  0C50 01D1                244          cmp     #465,(a0)
+00001278  6200 00AC                245          bhi     WALL
+0000127C                           246  
+0000127C                           247  *Check to see if you hit yourself
+0000127C  4284                     248          clr.l   d4
+0000127E  1839 000014DA            249          move.b  size,d4
+00001284                           250  hit
+00001284  B87C 0000                251          cmp     #0,d4   If we have already checked all the parts of the snake
+00001288  6F00 001E                252          ble     skip2   continue with the game loop
+0000128C  5984                     253          sub.l   #4,d4
+0000128E  43F9 00001486            254          lea     midSquares,a1   Load the beginning of the middle squares
+00001294  41F9 0000147E            255          lea     curSquare,a0    Load the starting address of the current position
+0000129A  D3C4                     256          adda.l  d4,a1   Start checking at the end of the snake and move up from there
+0000129C  B149                     257          cmp.w   (a1)+,(a0)+     If the x co-ordinates don't match
+0000129E  66E4                     258          bne     hit     move on to the next square
+000012A0  B149                     259          cmp.w   (a1)+,(a0)+     If the y co-ordinates don't match
+000012A2  66E0                     260          bne     hit     move on to the next square
+000012A4  6000 00B6                261          bra     SELF    Otherwise, they both match. That means you hit yourself
+000012A8                           262  
+000012A8                           263  skip2
+000012A8                           264  *Check to see if a pellet was eaten
+000012A8  41F9 0000147E            265          lea     curSquare,a0    Load the address of the current position
+000012AE  43F9 000014D6            266          lea     pellet,a1       Load the address of the pellet position
+000012B4  B348                     267          cmp.w   (a0)+,(a1)+     If the x co-ordinates don't match
+000012B6  6600 0026                268          bne     skip3   continue with the game loop
+000012BA  B348                     269          cmp.w   (a0)+,(a1)+     If the y co-ordinates don't match
+000012BC  6600 0020                270          bne     skip3   continue with the game loop
+000012C0  6100 0144                271          bsr     find_pellet     Otherwise a pellet was eaten, so find a draw a new one
+000012C4  323C 0002                272          move    #2,d1   load eat sound file
+000012C8  6100 01AC                273          bsr     play_soundDX    play sound file using DirectX player
+000012CC  0C39 004F 000014DA       274          cmp.b   #79,size        If the snake is at it's largest
+000012D4  6200 0008                275          bhi     skip3   don't make it larger, continue with the game loop
+000012D8  5839 000014DA            276          add.b   #4,size Otherwise, make the snake another square longer
+000012DE                           277  
+000012DE                           278  skip3
+000012DE  223C 000000FF            279          move.l  #$000000FF,d1   Make the pen red and the fill yellow to draw the snake
+000012E4  103C 0050                280          move.b  #80,d0
+000012E8  4E4F                     281          trap    #15
+000012EA  223C 0000FFFF            282          move.l  #$0000FFFF,d1
+000012F0  103C 0051                283          move.b  #81,d0
+000012F4  4E4F                     284          trap    #15
+000012F6                           285  
+000012F6  41F9 0000147E            286          lea     curSquare,a0    Reload the starting address of the current position
+000012FC  6100 00E8                287          bsr     draw_square     Draw the new front of the snake
+00001300                           288  
+00001300  223C 00FF0000            289          move.l  #$00FF0000,d1   Make the pen and fill blue to erase part of the snake
+00001306  103C 0050                290          move.b  #80,d0
+0000130A  4E4F                     291          trap    #15
+0000130C  223C 00FF0000            292          move.l  #$00FF0000,d1
+00001312  103C 0051                293          move.b  #81,d0
+00001316  4E4F                     294          trap    #15
+00001318  41F9 00001482            295          lea     oldSquare,a0    Load the part of the snake to be erased
+0000131E  6100 00C6                296          bsr     draw_square     Draw a blue square over it to erase it
+00001322                           297  
+00001322  6000 FE4E                298          bra     LOOP    Start the main game loop over again
+00001326                           299  
+00001326                           300  WALL
+00001326                           301  *stop theme music
+00001326  343C 0003                302          move    #3,d2  stop all DirectX music being played
+0000132A  303C 004D                303          move    #77,d0  trap number to control DirectX player
+0000132E  4E4F                     304          trap    #15
+00001330                           305  
+00001330                           306  *Change the fill color to black
+00001330  7200                     307          move.l  #$00000000,d1
+00001332  103C 0051                308          move.b  #81,d0
+00001336  4E4F                     309          trap    #15
+00001338                           310  
+00001338                           311  *Move the cursor to the middle of the screen
+00001338  4281                     312          clr.l   d1
+0000133A  323C 1E0F                313          move.w  #$1E0F,d1
+0000133E  103C 000B                314          move.b  #11,d0
+00001342  4E4F                     315          trap    #15
+00001344                           316  
+00001344                           317  *play the lose sound
+00001344  323C 0004                318          move    #4,d1   select the losew sound
+00001348  6100 0124                319          bsr     play_sound      play sound using regular player
+0000134C                           320          
+0000134C                           321  *Display the hit wall message and end the program
+0000134C  103C 000E                322          move.b  #14,d0
+00001350  43F9 000014E2            323          lea     wallMsg,a1
+00001356  4E4F                     324          trap    #15
+00001358  6000 0038                325          bra     DONE
+0000135C                           326  
+0000135C                           327  SELF
+0000135C                           328  
+0000135C                           329  *stop theme music
+0000135C  343C 0003                330          move    #3,d2   stop all DirectX music being played     
+00001360  303C 004D                331          move    #77,d0  trap number to control DirectX player
+00001364  4E4F                     332          trap    #15
+00001366                           333          
+00001366                           334  *play lose sound
+00001366  323C 0003                335          move    #3,d1   select the losew sound
+0000136A  6100 0102                336          bsr     play_sound      play sound using regular player
+0000136E                           337          
+0000136E                           338  *Change the fill color to black
+0000136E  7200                     339          move.l  #$00000000,d1
+00001370  103C 0051                340          move.b  #81,d0
+00001374  4E4F                     341          trap    #15
+00001376                           342  
+00001376                           343  *Move the cursor to the middle of the screen
+00001376  4281                     344          clr.l   d1
+00001378  323C 1E0F                345          move.w  #$1E0F,d1
+0000137C  103C 000B                346          move.b  #11,d0
+00001380  4E4F                     347          trap    #15
+00001382                           348  
+00001382                           349  *Display the hit self message and end the program
+00001382  103C 000E                350          move.b  #14,d0
+00001386  43F9 000014F5            351          lea     selfMsg,a1
+0000138C  4E4F                     352          trap    #15
+0000138E  6000 0002                353          bra     DONE
+00001392                           354  
+00001392                           355  DONE
+00001392  4E72 2000                356          STOP    #$2000
+00001396                           357  
+00001396                           358  *If the down key(5) was pressed modify the movement memory
+00001396                           359  move_down
+00001396  3C3C 0000                360          move.w  #0,d6   These numbers will be added to the front of the snake
+0000139A  3E3C 000A                361          move.w  #10,d7  to figure out where the next square should be
+0000139E  323C 0001                362          move    #1,d1   select the change sound file
+000013A2  6100 00D2                363          bsr     play_soundDX    play the sound using DirectX player
+000013A6  6000 FE9C                364          bra     continue
+000013AA                           365  
+000013AA                           366  *If the up key(8) was pressed
+000013AA                           367  move_up
+000013AA  3C3C 0000                368          move.w  #0,d6
+000013AE  3E3C FFF6                369          move.w  #-10,d7
+000013B2  323C 0001                370          move    #1,d1   select the change sound file
+000013B6  6100 00BE                371          bsr     play_soundDX    play the sound using DirectX player
+000013BA  6000 FE88                372          bra     continue
+000013BE                           373  
+000013BE                           374  *If the left key(4) was pressed
+000013BE                           375  move_left
+000013BE  3C3C FFF6                376          move.w  #-10,d6
+000013C2  3E3C 0000                377          move.w  #0,d7
+000013C6  323C 0001                378          move    #1,d1   select the change sound file
+000013CA  6100 00AA                379          bsr     play_soundDX    play the sound using DirectX player
+000013CE  6000 FE74                380          bra     continue
+000013D2                           381  
+000013D2                           382  *If the right key(6) was pressed
+000013D2                           383  move_right
+000013D2  3C3C 000A                384          move.w  #10,d6
+000013D6  3E3C 0000                385          move.w  #0,d7
+000013DA  323C 0001                386          move    #1,d1   select the change sound file
+000013DE  6100 0096                387          bsr     play_soundDX    play the sound using DirectX player
+000013E2  6000 FE60                388          bra     continue
+000013E6                           389  
+000013E6                           390  *Draw a square at the co-ordinates in a0
+000013E6                           391  draw_square
+000013E6  4281                     392          clr.l   d1
+000013E8  4282                     393          clr.l   d2
+000013EA  4283                     394          clr.l   d3
+000013EC  4284                     395          clr.l   d4
+000013EE  3218                     396          move.w  (a0)+,d1
+000013F0  3410                     397          move.w  (a0),d2
+000013F2  3601                     398          move.w  d1,d3
+000013F4  0643 000A                399          add.w   #10,d3
+000013F8  3802                     400          move.w  d2,d4
+000013FA  0644 000A                401          add.w   #10,d4
+000013FE  103C 0057                402          move.b  #87,d0
+00001402  4E4F                     403          trap    #15
+00001404  4E75                     404          rts
+00001406                           405  
+00001406                           406  find_pellet
+00001406  4281                     407          clr.l   d1
+00001408  4282                     408          clr.l   d2
+0000140A  4283                     409          clr.l   d3
+0000140C  103C 0008                410          move.b  #8,d0   Put the time in d1
+00001410  4E4F                     411          trap    #15
+00001412  C2BC 0000FFFF            412          and.l   #$FFFF,d1       Clear out the upper word
+00001418  82FC 003E                413          divu    #62,d1  Divide by 62 to get x1 (almost)
+0000141C  4841                     414          swap    d1
+0000141E  3401                     415          move.w  d1,d2
+00001420  C4FC 000A                416          mulu    #10,d2  Multiply x1 by 10
+00001424  5A42                     417          add.w   #5,d2   Add 5, now the x1 co-ordinate is done
+00001426  103C 0008                418          move.b  #8,d0   Put the time in d1 again
+0000142A  4E4F                     419          trap    #15
+0000142C  C2BC 0000FFFF            420          and.l   #$FFFF,d1       Clear out the upper word
+00001432  82FC 002E                421          divu    #46,d1  Divide by 46 to get y1 (almost)
+00001436  4841                     422          swap    d1
+00001438  3601                     423          move.w  d1,d3
+0000143A  C6FC 000A                424          mulu    #10,d3  Multiply y1 by 10
+0000143E  5A43                     425          add.w   #5,d3   Add 5, now the y1 co-ordinate is done
+00001440  45F9 000014D6            426          lea     pellet,a2       Move x1 and y1 into the memory for the pellet
+00001446  34C2                     427          move.w  d2,(a2)+
+00001448  34C3                     428          move.w  d3,(a2)+
+0000144A  223C 00FFFF80            429          move.l  #$00FFFF80,d1   Make the pen and fill grey to draw the pellet
+00001450  103C 0050                430          move.b  #80,d0
+00001454  4E4F                     431          trap    #15
+00001456  223C 00FFFF80            432          move.l  #$00FFFF80,d1
+0000145C  103C 0051                433          move.b  #81,d0
+00001460  4E4F                     434          trap    #15
+00001462  41F9 000014D6            435          lea     pellet,a0       Load the pellet
+00001468  6100 FF7C                436          bsr     draw_square     Subroutine to draw a square at given co-ordinates
+0000146C  4E75                     437          rts
+0000146E                           438          
+0000146E                           439  play_sound
+0000146E  303C 0048                440          move    #72,d0  trap number to use standard player
+00001472  4E4F                     441          trap    #15
+00001474  4E75                     442          rts
+00001476                           443          
+00001476                           444  play_soundDX
+00001476  303C 004B                445          move    #75,d0  trap number to use DX player
+0000147A  4E4F                     446          trap    #15
+0000147C  4E75                     447          rts
+0000147E                           448  
+0000147E                           449  *Memory to hold the front of the snake, the part to be erased and the rest of the snake
+0000147E                           450  curSquare       ds.w    2
+00001482                           451  oldSquare       ds.w    2
+00001486                           452  midSquares      ds.w    40
+000014D6                           453  
+000014D6                           454  *Memory to hold the location of the pellet
+000014D6                           455  pellet  ds.w    2
+000014DA                           456  
+000014DA                           457  *Size of the snake, Number of loops since the last speed increase, Speed each loop will be
+000014DA                           458  size    ds.b    1
+000014DC                           459  numLoops        ds.w    1
+000014DE                           460  speed   ds.l    1
+000014E2                           461  
+000014E2                           462  wallMsg
+000014E2= 59 6F 75 60 76 65 ...    463          dc.b    'You',$60,'ve Hit A Wall!',0
+000014F5                           464  selfMsg
+000014F5= 59 6F 75 60 76 65 ...    465          dc.b    'You',$60,'ve Hit Yourself!',0
+0000150A                           466          
+0000150A                           467  *The sound files to load into memory
+0000150A= 6D 6F 76 65 2E 77 ...    468  move    dc.b    'move.wav',0
+00001513= 63 68 61 6E 67 65 ...    469  change  dc.b    'change.wav',0
+0000151E= 65 61 74 2E 77 61 ...    470  eat     dc.b    'eat.wav',0
+00001526= 6C 6F 73 65 79 6F ...    471  loseyou dc.b    'loseyou.wav',0
+00001532= 6C 6F 73 65 77 2E ...    472  losew   dc.b    'losew.wav',0
+0000153C= 74 68 65 6D 65 2E ...    473  theme   dc.b    'theme.wav',0
+00001546                           474  
+00001546                           475          END     START
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CHANGE              1513
+CONTINUE            1244
+COPY                11FA
+CURSQUARE           147E
+DONE                1392
+DRAW_SQUARE         13E6
+EAT                 151E
+FILL                110C
+FIND_PELLET         1406
+HIT                 1284
+LOOP                1172
+LOSEW               1532
+LOSEYOU             1526
+MIDSQUARES          1486
+MOVE                150A
+MOVE_DOWN           1396
+MOVE_LEFT           13BE
+MOVE_RIGHT          13D2
+MOVE_UP             13AA
+NUMLOOPS            14DC
+OLDSQUARE           1482
+PELLET              14D6
+PLAY_SOUND          146E
+PLAY_SOUNDDX        1476
+SELF                135C
+SELFMSG             14F5
+SIZE                14DA
+SKIP                11C0
+SKIP2               12A8
+SKIP3               12DE
+SPEED               14DE
+START               1000
+THEME               153C
+WALL                1326
+WALLMSG             14E2

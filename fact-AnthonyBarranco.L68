@@ -1,0 +1,72 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.12.0
+Created On: 10/28/2012 4:44:54 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Program    : FACT     
+00000000                             3  * Written by : Anthony Barranco
+00000000                             4  * Date       : 10/1/12
+00000000                             5  * Description: Takes user input number, outputs factorial
+00000000                             6  *-----------------------------------------------------------
+00000000                             7          
+00001000                             8  START:  ORG     $1000                   ; first instruction of program
+00001000                             9  
+00001000                            10          *-----Ask for the number input-----
+00001000  43F9 00001038             11          LEA MESSAGE,A1          ;Loads MESSAGE into
+00001006  103C 000E                 12          Move.B  #14,D0          ;Moves the number 14 into data register D0
+0000100A  4E4F                      13          TRAP    #15
+0000100C                            14          
+0000100C                            15          *------INPUT-----
+0000100C  103C 0004                 16          Move.B  #4,D0
+00001010  4E4F                      17          TRAP    #15
+00001012  1E3C 0001                 18          Move.B  #1,D7            ;Putting 1 in D7 to start
+00001016                            19          
+00001016                            20          *----BSR--------
+00001016  6100 0040                 21          BSR     factorial       ;n! = n * n-1
+0000101A                            22                  
+0000101A                            23          *-----OUTPUT MESSAGE------
+0000101A  43F9 00001051             24          LEA     TOTAL, A1       ;Display TOTAL for information
+00001020  303C 000E                 25          MOVE    #14,D0
+00001024  4E4F                      26          TRAP    #15
+00001026                            27          
+00001026                            28          *---OUTPUT FACTORIAL-----
+00001026  2207                      29          Move.L  D7, D1          ;Moving result into D1 to print
+00001028  143C 000A                 30          Move.B  #10, D2         ;Setting base
+0000102C  103C 000F                 31          Move.B  #15, D0
+00001030  4E4F                      32          TRAP #15
+00001032                            33          
+00001032                            34          *----TERMINATE---
+00001032  103C 0009                 35          MOVE.B  #9,D0
+00001036  4E4F                      36          TRAP    #15
+00001038                            37  
+00001038                            38  * Variables and Strings
+00001038  =0000000D                 39  CR      EQU     $0D     ASCII Code for Carriage Return
+00001038  =0000000A                 40  LF      EQU     $0A     ASCII code for Line Feed
+00001038= 49 6E 70 75 74 20 ...     41  MESSAGE DC.B    'Input number n for n! : ',0  Please ASCII string in memory at MESSAGE
+00001051= 6E 21 20 3D 20 20 00      42  TOTAL   DC.B    'n! =  ',0
+00001058                            43  
+00001058                            44  
+00001058                            45  *------SUBROUTINE------
+00001058  CEC1                      46  factorial       MULU    D1, D7
+0000105A  5341                      47                  SUB     #1, D1
+0000105C  6700 0004                 48                  BEQ     finish
+00001060  61F6                      49                  BSR     factorial
+00001062                            50                  
+00001062  4E75                      51  finish          RTS
+00001064                            52  
+00001064                            53          END     START           ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CR                  D
+FACTORIAL           1058
+FINISH              1062
+LF                  A
+MESSAGE             1038
+START               1000
+TOTAL               1051
