@@ -1,6 +1,6 @@
 *-----------------------------------------------------------
 * Program    : Craps base code
-* Written by : Ron Coleman, Ph.D.
+* Written by : Anthony Barranco
 * Date       : 14-Oct-2012
 * Description:
 * Implements the base to initialize the pit and shoot dice
@@ -397,6 +397,7 @@ losem	DC.B	CR,LF,'You lost $',0
 gameover DC.B	CR,LF,'Game Over.',0
 
 	end	start		; last line of source
+
 
 
 

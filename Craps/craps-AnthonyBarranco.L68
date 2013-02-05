@@ -1,10 +1,10 @@
 00001000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.12.0
-Created On: 10/28/2012 7:59:05 PM
+Created On: 2/4/2013 9:49:48 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Program    : Craps base code
-00000000                             3  * Written by : Ron Coleman, Ph.D.
+00000000                             3  * Written by : Anthony Barranco
 00000000                             4  * Date       : 14-Oct-2012
 00000000                             5  * Description:
 00000000                             6  * Implements the base to initialize the pit and shoot dice
